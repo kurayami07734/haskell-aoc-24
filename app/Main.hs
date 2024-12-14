@@ -1,6 +1,6 @@
 module Main where
 
-import One (solve)
+import Two (solve)
 
 -- Check the solve functions 
 -- in the module for each day
