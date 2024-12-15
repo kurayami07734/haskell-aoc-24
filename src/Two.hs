@@ -1,63 +1,50 @@
 module Two where
 
-makePairs :: [Int] -> [(Int, Int)]
-makePairs [] = []
-makePairs [_] = []
-makePairs (x : y : xs) = [(x, y)] <> makePairs (y : xs)
-
-pairWiseDiff :: [Int] -> [Int]
--- Added uncurry on suggestion of linter; it says code will be better at lazy eval
-pairWiseDiff xs = map (uncurry (-)) (makePairs xs)
-
--- Passing Infinite list here would result in infinite loop
-enumerate :: [Int] -> [(Int, Int)]
-enumerate = zip [0 ..]
-
--- For Discarding zipped indices after done with enumeration
-takeValues :: ([Int], [Int]) -> [Int]
-takeValues (_, v) = v
+import Data.List (inits, tails)
 
 readReport :: String -> [Int]
-readReport report = map read w
-  where
-    w = words report
+readReport report = map read $ words report
+
+allSameSign :: [Int] -> Bool
+allSameSign xs = all (> 0) xs || all (< 0) xs
+
+smallEnough :: [Int] -> Bool
+smallEnough = all ((<= 3) . abs)
+
+bigEnough :: [Int] -> Bool
+bigEnough = all ((>= 1) . abs)
 
 -- Predicate for safe report as per problem statement
--- Time Complexity: O(n) 
--- Space Complexity: O(n) -> n adjacent pairs 
-isSafeReport :: [Int] -> Bool
-isSafeReport level = allPositive || allNegative
+-- Time Complexity: O(n)
+-- Space Complexity: O(n) -> n adjacent pairs
+isSafe :: [Int] -> Bool
+isSafe xs = and $ [allSameSign, smallEnough, bigEnough] <*> pure diffs
   where
-    allPositive = all (\x -> x > 0 && x < 4) levelDiffs
-    allNegative = all (\x -> x < 0 && x > -4) levelDiffs
-    levelDiffs = pairWiseDiff level
+    diffs = zipWith (-) xs $ tail xs
 
 -- Creating variants of reports by excluding one level
 -- Eg: [1, 2, 3] -> [[2,3], [1,2], [1,3]]
 -- Time Complexity: O(n^2) -> nested loops
 -- Space Complexity: O(n^2) -> nested loops
-reportsExcludingOneLevel :: [Int] -> [[Int]]
-reportsExcludingOneLevel levels = variants
-  where
-    variants = map (takeValues . unzip) enumeratedVariants
-    enumeratedVariants = map excludeOne enumerated
-    enumerated = enumerate levels
-    excludeOne (i, _) = filter (\(j, _) -> i /= j) enumerated
+damped :: [Int] -> [[Int]]
+damped line = zipWith (++) (inits line) (drop 1 $ tails line)
+
+safeWhenDamped :: [Int] -> Bool
+safeWhenDamped = any isSafe . damped
 
 -- Count number of safe reports
--- Time complexity: O(n*m) 
--- Space complexity: Same as isSafeReport
+-- Time complexity: O(n*m)
+-- Space complexity: Same as isSafe
 partA :: [[Int]] -> Int
-partA reports = length $ filter isSafeReport reports
+partA reports = length $ filter isSafe reports
 
 -- Count number of safe and false unsafe reports
 -- Time complexity: O(n*m + m*k^2) (k is false unsafe reports)
--- Space complexity: Same as reportsExcludingOneLevel
+-- Space complexity: Same as damped
 partB :: [[Int]] -> Int
-partB reports = partA reports + falseUnsafeCount
+partB reports = length $ filter isSafe' reports
   where
-    falseUnsafeCount = length $ filter (any isSafeReport) unsafeReportVariants
-    unsafeReportVariants = map reportsExcludingOneLevel (filter (not . isSafeReport) reports)
+    isSafe' l = isSafe l || safeWhenDamped l
 
 solve :: IO ()
 solve = do
